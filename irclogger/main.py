@@ -273,13 +273,21 @@ class Bot(Component):
         )
 
     def part(self, source, channel, reason=None):
-        """Part Event
+        """Process the `PART` event
 
-        This event is triggered by the ``IRC`` Protocol Component when a
-        user has left a channel.
+        Arguments:
+          source (tuple): (nick, username, server) e.g. ('Ferraz42_', '~jedygabri', '179.104.53.103')
+        Remove nick (in `source[0]`) from set of nicks associated with this channel.
         """
 
-        self.chanmap[channel].remove(source[0])
+        try:
+            self.chanmap[channel].remove(source[0])
+            if self.opts.verbose:
+                print('INFO: {} left {}'.format(source[0], channel))
+        except:
+            print('WARN: unable to find "{}" nick among the nicks {} in channel {}'.format(
+                  source[0], self.chanmap[channel], channel))
+            self.chanmap[channel].remove(source[0])
         self.nickmap[source[0]].remove(channel)
 
         self.fire(
