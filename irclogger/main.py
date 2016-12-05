@@ -16,8 +16,9 @@ from socket import error as SocketError
 from re import compile as compile_regex
 from datetime import date, datetime, timedelta
 from os import environ, getcwd, makedirs, path
-from time import asctime, localtime, strftime, time
+from time import asctime, localtime, strftime, time, sleep
 
+from termcolor import colored
 
 import circuits
 
@@ -32,7 +33,7 @@ from circuits.net.events import connect
 from circuits.net.sockets import TCPClient
 
 from circuits.protocols.irc import ERR_NICKNAMEINUSE
-from circuits.protocols.irc import IRC, USER, NICK, JOIN
+from circuits.protocols.irc import IRC, USER, NICK, JOIN, PASS
 from circuits.protocols.irc import RPL_ENDOFMOTD, ERR_NOMOTD
 
 
@@ -68,13 +69,19 @@ def parse_options():
     )
 
     parser.add_option(
+        "-p", "--password", "--pass",
+        action="store", default="", dest="password",
+        help="Password to identify NICKNAME with"
+    )
+
+    parser.add_option(
         "-o", "--output",
         action="store", default=getcwd(), dest="output",
         help="Path to store log files"
     )
 
     parser.add_option(
-        "-p", "--pidfile",
+        "--pid", "--pidfile", "--lockfile",
         action="store", default=PIDFILE, dest="pidfile",
         help="Path to store PID file"
     )
@@ -225,12 +232,15 @@ class Bot(Component):
         when a successfully connection has been made.
         """
 
+        password = self.opts.password
+        if password:
+            self.fire(PASS(password))
+            sleep(0.3)
         nick = self.nick
         hostname = self.hostname
         name = "{0:s} on {1:s} using circuits/{2:s}".format(
             nick, hostname, circuits.__version__
         )
-
         self.fire(USER(nick, hostname, host, name))
         self.fire(NICK(nick))
 
@@ -280,13 +290,13 @@ class Bot(Component):
         Remove nick (in `source[0]`) from set of nicks associated with this channel.
         """
 
-        try:
+        if source[0] in self.chanmap[channel]:
             self.chanmap[channel].remove(source[0])
             if self.opts.verbose:
-                print('INFO: {} left {}'.format(source[0], channel))
-        except:
-            print('WARN: unable to find "{}" nick among the nicks {} in channel {}'.format(
-                  source[0], self.chanmap[channel], channel))
+                print(colored('INFO: {} left {}'.format(source[0], channel), 'white', attrs=['dark']))
+        else:
+            print(colored('WARN', 'yellow') + 'unable to find "{}" nick among the nicks {} in channel {}'.format(
+                  colored(source[0], 'yellow'), self.chanmap[channel], channel))
             self.chanmap[channel].remove(source[0])
         self.nickmap[source[0]].remove(channel)
 
